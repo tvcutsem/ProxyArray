@@ -3,62 +3,42 @@
 function handlerMaker(obj) {
   return {
    getOwnPropertyDescriptor: function(name) {
-     //console.log('getOwnPropertyDescriptor', arguments);
-     var desc = Object.getOwnPropertyDescriptor(obj, name);
-         
-     // temp fix to avoid https://bugzilla.mozilla.org/show_bug.cgi?id=582967
-     // if the property isn't define, act as if it was with undefined value
-     return desc || {value:undefined, writable:true, configurable:true, enumerable:true};
+     return Object.getOwnPropertyDescriptor(obj, name);
    },
    
    getPropertyDescriptor: function(name) {
-        //console.log('getPropertyDescriptor: looking for '+name+'.');
-        /*var objectToInspect;
-        var result;
+     var objectToInspect;
+     var desc;
 
-        for(objectToInspect = proxy; //will eventually be passed as an argument, right?
-            objectToInspect !== null; 
-            objectToInspect = Object.getPrototypeOf(objectToInspect))
-        {
-                console.log()
-                result = Object.getOwnPropertyDescriptor(objectToInspect, name);
-                if (result !== undefined) { return result; } 
-        }*/
-        
-        var d = this.getOwnPropertyDescriptor(name);
-        var pd = Object.getOwnPropertyDescriptor(Array.prototype, name);
-        //console.log(d);
-        var ret = !(d === undefined || d.value === undefined /*because of the temp fix*/) ?
-                        d :
-                        pd === undefined ?
-                            {value:undefined, writable:true, configurable:true, enumerable:true}:
-                            pd;
-        
-        // temp fix to avoid https://bugzilla.mozilla.org/show_bug.cgi?id=582967
-        return ret;
+     for(objectToInspect = obj;
+         objectToInspect !== null; 
+         objectToInspect = Object.getPrototypeOf(objectToInspect)) {
+       desc = Object.getOwnPropertyDescriptor(objectToInspect, name);
+       if (desc !== undefined) { return desc; } 
+     }
+     return undefined;
    },
    
    getOwnPropertyNames: function() {
-     //console.log('getOwnPropertyNames', arguments);
      return Object.getOwnPropertyNames(obj);
    },
    
    getPropertyNames: function() {
-     //console.log('getPropertyNames', arguments);
      return this.getOwnPropertyNames(); // incorrect !
    },
    
    defineProperty: function(name, desc) {
-     //console.log('defineProperty', arguments);
      Object.defineProperty(obj, name, desc);
+     //NOTE(tvcutsem): for the fixed properties strawman,
+     // defineProperty should return the defined descriptor
+     return desc;
    },
    
    delete: function(name) { 
-     //console.log('delete', arguments);
      return delete obj[name]; 
    },
       
-   fix:          function() {
+   fix: function() {
      if (Object.isFrozen(obj)) {
        return Object.getOwnPropertyNames(obj).map(function(name) {
          return Object.getOwnPropertyDescriptor(obj, name);
@@ -66,7 +46,65 @@ function handlerMaker(obj) {
      }
      // As long as obj is not frozen, the proxy won't allow itself to be fixed
      return undefined; // will cause a TypeError to be thrown
-   }
+   },
+   
+   // NOTE(tvcutsem): added get and set traps with default behavior
+   
+   get: function(rcvr, name) {
+     var desc = this.getPropertyDescriptor(name);
+     if (desc !== undefined) {
+       if ('value' in desc) {
+         return desc.value;
+       } else {
+         if (desc.get === undefined) { return undefined; }
+         return desc.get.call(rcvr);
+       }
+     }
+     return undefined;
+   },
+   set: function(rcvr, name, val) {
+     var desc = this.getOwnPropertyDescriptor(name);
+     if (desc) {
+       if ('writable' in desc) {
+         if (desc.writable) {
+           desc.value = val;
+           this.defineProperty(name, desc);
+           return true;
+         } else {
+           return false;
+         }
+       } else { // accessor
+         if (desc.set) {
+           desc.set.call(rcvr, val);
+           return true;
+         } else {
+           return false;
+         }
+       }
+     }
+     desc = this.getPropertyDescriptor(name);
+     if (desc) {
+       if ('writable' in desc) {
+         if (desc.writable) {
+           // fall through
+         } else {
+           return false;
+         }
+       } else { // accessor
+         if (desc.set) {
+           desc.set.call(rcvr, val);
+           return true;
+         } else {
+           return false;
+         }
+       }
+     }
+     this.defineProperty(name, {
+       value: val, 
+       writable: true, 
+       enumerable: true, 
+       configurable: true});
+     return true;   }
   };
 }
 

@@ -5,35 +5,56 @@
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 
     <script type="text/javascript" src="ForwardingProxy.js"> </script>
+    <script type="text/javascript" src="FixedHandler.js"> </script>
     <script type="text/javascript" src="ProxyArray.js"> </script>
 
     <script type="text/javascript">
+        // FixedHandler.installAsDefault();
         var a = proxyArray();
 
         a[0] = 'a';
-        console.log(a[0]);
-        console.log(a.length);
+        console.log(a[0], ' expected "a"');
+        console.log(a.length, ' expected 1');
         
         a[1] = 32;
-        console.log(a[1]);
-        console.log(a.length);
+        console.log(a[1], ' expected 32');
+        console.log(a.length,' expected 2');
         
         a[13] = 12345;
-        console.log(a[13]);
-        console.log(a.length);
+        console.log(a[13], ' expected 12345');
+        console.log(a.length, ' expected 14');
         
         a.length = 10;
-        console.log(a[13]);
-        console.log(a.length);
+        console.log(a[13], ' expected undefined');
+        console.log(a.length, ' expected 10');
 
+        Object.defineProperty(a, 'foo', {value:22, configurable:false});
+        console.log(a.foo, ' expected 22');
+        console.log(Object.getOwnPropertyDescriptor(a, 'foo'));
+        
+        // this fixes "length" on the proxy
+        var ldesc = Object.getOwnPropertyDescriptor(a, 'length');
+        console.log(ldesc, ' expected value:10,writable:true,configurable:false');
+        
+        a.length = 11;
+        console.log(a.length, ' expected 11');
+        ldesc = Object.getOwnPropertyDescriptor(a, 'length');
+        console.log(ldesc, ' expected value:11,writable:true,configurable:false');
+
+        Object.defineProperty(a, 'length', {value:a.length, writable:false});
+        ldesc = Object.getOwnPropertyDescriptor(a, 'length');
+        console.log(ldesc.writable, ' expected false');
+        
+        a.length = 12;
+        console.log(a.length, ' expected 11');
 
         var b = proxyArray(-1, 0, 1, 2, 3, 4);
-        console.log(b.some(function(e){return e>0;}));
+        console.log(b.some(function(e){return e>0;}), ' expected true');
         
     </script>
 
 
-    <title> Array Reimpl with proxies </title>
+    <title> self-hosted Array using fixed proxies </title>
 
   </head>
 
