@@ -33,7 +33,7 @@ var proxyArray = window.proxyArray = function(){
           
           if(desc.value === undefined) {
             Object.defineProperty(arrayStorage, "length", desc); // ES5 8.12.9
-            return desc;
+            return true;
           }
           
           newLenDesc = copyDescriptor(desc);
@@ -44,7 +44,7 @@ var proxyArray = window.proxyArray = function(){
           
           if(newLen >= oldLen) {
             Object.defineProperty(arrayStorage, "length", newLenDesc); // ES5 8.12.9
-            return newLenDesc;
+            return true;
           }
           
           if (oldLenDesc.writable === false) {
@@ -85,8 +85,8 @@ var proxyArray = window.proxyArray = function(){
           if(!newWritable){
               Object.defineProperty(arrayStorage, "length", {writable:false}); // ES5 8.12.9
           }
-          // success, return true
-          return Object.getOwnPropertyDescriptor(arrayStorage, "length");
+          // success
+          return true;
       }
       else{
           if(String(Number(name)) === name){ // Should be "ToString(ToUint32(P)) === P  &&  ToUint32(P) !== (2^32 − 1)"
@@ -102,10 +102,10 @@ var proxyArray = window.proxyArray = function(){
                   oldLenDesc.value = index+1;
                   Object.defineProperty(arrayStorage, "length", oldLenDesc); // ES5 8.12.9
               }
-              return desc;
+              return true;
           } else {
               Object.defineProperty(arrayStorage, name, desc); // ES5 8.12.9
-              return desc;
+              return true;
           }
       }
     };

@@ -30,8 +30,9 @@ function handlerMaker(obj) {
    defineProperty: function(name, desc) {
      Object.defineProperty(obj, name, desc);
      //NOTE(tvcutsem): for the fixed properties strawman,
-     // defineProperty should return the defined descriptor
-     return desc;
+     // defineProperty should return a boolean success value,
+     // like set and delete
+     return true;
    },
    
    delete: function(name) { 
